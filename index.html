@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>LSDJ Converter (Browser Only)</title>
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 40px;
+    max-width: 1800px;
+  }
+  .output {
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    white-space: pre-wrap;
+  }
+  .dt {
+    display: table;
+    font-family: monospace;
+  }
+  .dr {
+    display: table-row;
+  }
+  .dr2 {
+    display: table-row;
+  }
+  .dc, .divTableHead {
+    border: 1px solid #999999;
+    display: table-cell;
+    padding: 1px 1px;
+  }
+  .dc1 {
+    background-color: #CCC;
+    border: 1px solid #999999;
+    display: table-cell;
+    padding: 1px 1px;
+
+  }
+  .dc2 {
+    border: 1px solid #999999;
+    display: table-cell;
+    padding: 1px 1px;
+  }
+  .dc2:first-letter {
+    background-color: #CCC;  
+  }
+  .dc3 {
+    display: table-cell;
+  }
+  .dc4 {
+    background-color: #EEE;
+    border: 1px solid #999999;
+    display: table-cell;
+    padding: 1px 1px;  
+  }
+  .divTableBody {
+    display: table-row-group;
+  }
+</style>
+</head>
+<body>
+  <p>
+    Convert your LSDSNG data to HTML, JSON, or even a MIDI file.
+    <br><br>
+    Choose .lsdsng or .lsdprj file, select output type, and click convert.
+  </p>
+
+<form id="uploadForm">
+  <p>
+    <input type="file" id="file" accept=".lsdsng,.lsdprj">
+  </p>
+
+  <p>Output format:</p>
+  <select id="outputMode">
+    <option value="html">HTML</option>
+    <option value="midi">MIDI</option>
+    <option value="json">Raw JSON</option>
+  </select>
+
+  <p>
+    <button type="button" id="submit">Convert</button>
+  </p>
+</form>
+
+<div id="output" class="output"></div>
+
+<script src="expander.js"></script>
+<script src="lsdsng.js"></script>
+
+<script>
+document.getElementById("submit").addEventListener("click", (event) => {
+  event.preventDefault();
+
+  const fileInput = document.getElementById("file");
+  const mode = document.getElementById("outputMode").value;
+  const outputDiv = document.getElementById("output");
+
+  if (!fileInput.files.length) {
+    alert("Please choose a file.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    const arrayBuffer = e.target.result;
+    const bytes = new Uint8Array(arrayBuffer);
+
+    let parsed;
+    try {
+      parsed = window.lsdsng.unpack(bytes);
+    } catch (err) {
+      outputDiv.textContent = "Error: " + err;
+      return;
+    }
+
+    if (mode === "html") {
+      outputDiv.innerHTML = window.lsdsng.makeHTML(parsed);
+    }
+
+    else if (mode === "json") {
+      outputDiv.textContent = JSON.stringify(parsed, null, 2);
+    }
+
+    else if (mode === "midi") {
+      const midiBytes = window.lsdsng.makeMIDI(parsed);
+      const blob = new Blob([midiBytes], { type: "audio/midi" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+
+      let safeName = "";
+      for (let i = 0; i < parsed.name.length; i++) {
+        const ch = String.fromCharCode(parsed.name[i]);
+        safeName += /[A-Z0-9]/.test(ch) ? ch : "x";
+      }
+      a.download = safeName + ".mid";
+      a.click();
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+</script>
+
+</body>
+</html>
